@@ -61,24 +61,27 @@ class MessageHandler implements Runnable {
 			try {
 				readWriteProcessing();
 			} catch (Exception e) {
-				e.printStackTrace();
+//				e.printStackTrace();
 			}
 			selector.wakeup();
 		});
 	}
 
 	private synchronized void readWriteProcessing() throws IOException {
-		int numBytes = channel.read(readBuffer);
-		if (numBytes > 0) {
-			String input = new String(Arrays.copyOf(readBuffer.array(), readBuffer.position()));
-			readBuffer.clear();
-			ProducerRecord<String, String> record = new ProducerRecord<>(topic, null, input);
-			Future<RecordMetadata> send = producer.send(record);
-			try {
+		try {
+			int numBytes = channel.read(readBuffer);
+			if (numBytes > 0) {
+				String input = new String(Arrays.copyOf(readBuffer.array(), readBuffer.position()));
+				readBuffer.clear();
+				ProducerRecord<String, String> record = new ProducerRecord<>(topic, null, input);
+				Future<RecordMetadata> send = producer.send(record);
 				send.get(TIMEOUT, TimeUnit.MILLISECONDS);
-			} catch (InterruptedException | ExecutionException | TimeoutException e) {
-				e.printStackTrace();
 			}
+		} catch (InterruptedException | ExecutionException | TimeoutException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			selectionKey.cancel();
+			channel.close();
 		}
 	}
 
